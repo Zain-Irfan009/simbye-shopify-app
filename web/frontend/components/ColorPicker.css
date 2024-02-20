@@ -1,0 +1,17 @@
+.Color-Inputs .Color-Circle {
+    width: 30px;
+    height: 30px;
+    border: 1px solid transparent;
+    background-position: 50%;
+    border-radius: 20px;
+    color: transparent;
+    display: inline-block;
+    cursor: pointer;
+  }
+  
+  .Color-Inputs .Color-Circle-Border {
+    border-color: #cccccc !important;
+  }
+  .Color-Inputs  input[type="color"] {
+    visibility: hidden;
+  }
