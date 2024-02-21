@@ -5,11 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Lineitem;
 use App\Models\Order;
 use App\Models\PageBar;
+use App\Models\Session;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Shopify\Clients\Rest;
 
 class OrderController extends Controller
 {
+
+    public function Orders(Request $request)
+    {
+        $shop = getShop($request->get('shopifySession'));
+        $orders = Order::where('shop_id', $shop->id)->orderBy('order_number','Desc')->paginate(20);
+        return response()->json($orders);
+    }
     public function OrdersSync(Request $request){
         $shop = getShop($request->get('shopifySession'));
         $this->syncOrders($shop);
@@ -38,24 +47,10 @@ class OrderController extends Controller
 
     public function createUpdateOrder($order, $shop)
     {
+        $client = new Rest($shop->shop, $shop->access_token);
         $order = json_decode(json_encode($order), false);
         if($order->financial_status!='refunded' && $order->cancelled_at==null  ) {
 
-            if(isset($order->discount_codes) && count($order->discount_codes) > 0) {
-
-                $flag=0;
-                foreach ($order->discount_codes as $discount){
-                    $page_bar=PageBar::where('discount_code',$discount->code)->first();
-                    if($page_bar){
-                        $flag=1;
-                        $discount_code=$discount->code;
-                        $discount_amount=$discount->amount;
-                        $discount_type=$discount->type;
-                        $bar_id=$page_bar->id;
-                        break;
-                    }
-                }
-                if($flag==1) {
                     $newOrder = Order::where('shopify_id', $order->id)->where('shop_id', $shop->id)->first();
                     if ($newOrder == null) {
                         $newOrder = new Order();
@@ -83,10 +78,7 @@ class OrderController extends Controller
                         $newOrder->customer_id = $order->customer->id;
                     }
 
-                        $newOrder->discount_code = $discount_code;
-                    $newOrder->discount_amount = $discount_amount;
-                    $newOrder->discount_type = $discount_type;
-                    $newOrder->page_bar_id = $bar_id;
+
 
                     $newOrder->shopify_created_at = date_create($order->created_at)->format('Y-m-d h:i:s');
                     $newOrder->shopify_updated_at = date_create($order->updated_at)->format('Y-m-d h:i:s');
@@ -104,7 +96,7 @@ class OrderController extends Controller
                     $newOrder->shop_id = $shop->id;
                     $newOrder->save();
 
-
+                    $packageInfoList = array();
                     foreach ($order->line_items as $item) {
 
                         $new_line = Lineitem::where('shopify_id', $item->id)->where('order_id', $newOrder->id)->where('shop_id', $shop->id)->first();
@@ -131,9 +123,166 @@ class OrderController extends Controller
                         $new_line->order_id = $newOrder->id;
                         $new_line->shop_id = $shop->id;
                         $new_line->save();
+
+                        $packageInfoList[] = array(
+                            'packageCode' => $item->sku,
+                            'count' => $item->quantity
+                        );
+                    }
+
+            $setting=Setting::where('shop_id',$shop->id)->first();
+
+                    if($setting && $setting->status==1){
+
+            $transactionId = $order->order_number;
+            $request_body = array(
+                "transactionId" => $transactionId,
+                "packageInfoList" => $packageInfoList
+            );
+            $request_json = json_encode($request_body);
+
+            $curl = curl_init();
+
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => 'https://api.esimaccess.com/api/v1/open/esim/order',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS =>$request_json,
+                CURLOPT_HTTPHEADER => array(
+                    'RT-AccessCode:'.$setting->access_code,
+                    'Content-Type: application/json'
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $response=json_decode($response);
+
+            if($response->success==true){
+                if(isset($response->obj)) {
+                    $orderNo = $response->obj->orderNo;
+                    $newOrder->esim_order_id=$orderNo;
+                    $newOrder->save();
+
+            $order_update = $client->put('/orders/' . $newOrder->shopify_id . '.json', [
+                "order" => [
+                    "note" => $orderNo,
+                ]
+            ]);
+            $order_update = $order_update->getDecodedBody();
+
+            if (isset($order_update) && !isset($order_update['errors'])) {
+
+
+                $curl1 = curl_init();
+
+                $request_data = array(
+                    "orderNo" => $orderNo,
+                    "iccid" => "",
+                    "pager" => array(
+                        "pageNum" => 1,
+                        "pageSize" => 500
+                    )
+                );
+                $request_data = json_encode($request_data);
+
+                curl_setopt_array($curl1, array(
+                    CURLOPT_URL => 'https://api.esimaccess.com/api/v1/open/esim/query',
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 0,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'POST',
+                    CURLOPT_POSTFIELDS => $request_data,
+                    CURLOPT_HTTPHEADER => array(
+                        'RT-AccessCode:'.$setting->access_code,
+                        'Content-Type: application/json'
+                    ),
+                ));
+
+                $response1 = curl_exec($curl1);
+                curl_close($curl1);
+                $response1 = json_decode($response1, true);
+                if ($response1['success'] == true) {
+                    if ($response1 && isset($response1['obj']['esimList'])) {
+
+                        $esim_list = $response1['obj']['esimList'];
+                        $newOrder->esim_all_profile = json_encode($esim_list);
+                        $newOrder->save();
+
+
+                        $metafield_data = [
+                            "metafield" =>
+                                [
+                                    "key" => 'data',
+                                    "value" => json_encode($esim_list),
+                                    "type" => "json_string",
+                                    "namespace" => "Esim",
+
+                                ]
+                        ];
+                        $order_metafield = $client->post('/orders/' . $newOrder->shopify_id . '/metafields.json', $metafield_data);
+                        $order_metafield = $order_metafield->getDecodedBody();
+
+                        if (isset($order_metafield) && !isset($order_metafield['errors'])) {
+                            $newOrder->metafield_id = $order_metafield['metafield']['id'];
+                            $newOrder->save();
+                        }
                     }
                 }
+                }
             }
+                }
+            }
+
+
+        }
+    }
+
+
+    public function BalanceDetail(Request $request){
+
+        $order=Order::where('shopify_id',$request->id)->first();
+        if($order) {
+            $setting=Setting::where('shop_id',$order->shop_id)->first();
+            $curl1 = curl_init();
+
+
+            $request_data = array(
+                "orderNo" => $order->esim_order_id,
+                "iccid" => "",
+                "pager" => array(
+                    "pageNum" => 1,
+                    "pageSize" => 500
+                )
+            );
+            $request_data = json_encode($request_data);
+
+            curl_setopt_array($curl1, array(
+                CURLOPT_URL => 'https://api.esimaccess.com/api/v1/open/esim/query',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $request_data,
+                CURLOPT_HTTPHEADER => array(
+                    'RT-AccessCode:'.$setting->access_code,
+                    'Content-Type: application/json'
+                ),
+            ));
+
+            $response1 = curl_exec($curl1);
+            curl_close($curl1);
+            return response()->json($response1);
         }
     }
 }
