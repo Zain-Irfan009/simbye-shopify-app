@@ -72,7 +72,7 @@ Route::get('/testing', function() {
 
 
 
-    $session=\App\Models\Session::where('shop','tlx-new-brand.myshopify.com')->first();
+    $session=\App\Models\Session::where('shop','simbye.myshopify.com')->first();
 
     $client = new Rest($session->shop, $session->access_token);
 
