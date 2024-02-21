@@ -47,8 +47,8 @@ class UpdateEsimOrderStatusCron extends Command
         $setting=Setting::where('shop_id',$shop->id)->first();
         if($setting && $setting==1) {
             foreach ($orders as $order) {
-
-                $esim_data_list = json_decode($order->esim_all_profile);
+                if ($order->esim_all_profile){
+                    $esim_data_list = json_decode($order->esim_all_profile);
                 $flag = 0;
                 foreach ($esim_data_list as $list) {
                     if ($list->smdpStatus == 'RELEASED') {
@@ -81,7 +81,7 @@ class UpdateEsimOrderStatusCron extends Command
                         CURLOPT_CUSTOMREQUEST => 'POST',
                         CURLOPT_POSTFIELDS => $request_data,
                         CURLOPT_HTTPHEADER => array(
-                            'RT-AccessCode:'.$setting->access_code,
+                            'RT-AccessCode:' . $setting->access_code,
                             'Content-Type: application/json'
                         ),
                     ));
@@ -120,6 +120,7 @@ class UpdateEsimOrderStatusCron extends Command
                     $order->save();
                 }
             }
+        }
         }
 
     }
