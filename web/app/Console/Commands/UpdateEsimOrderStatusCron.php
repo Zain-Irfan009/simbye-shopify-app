@@ -45,7 +45,7 @@ class UpdateEsimOrderStatusCron extends Command
         $client = new Rest($shop->shop, $shop->access_token);
       $orders=Order::where('smtp_status',0)->get();
         $setting=Setting::where('shop_id',$shop->id)->first();
-        if($setting && $setting==1) {
+        if($setting && $setting->status==1) {
             foreach ($orders as $order) {
                 if ($order->esim_all_profile){
                     $esim_data_list = json_decode($order->esim_all_profile);
