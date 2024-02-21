@@ -12,8 +12,8 @@
     "info": "shopify app info"
   },
   "dependencies": {
-    "@shopify/app": "3.52.0",
-    "@shopify/cli": "3.52.0",
+    "@shopify/app": "^3.56.2",
+    "@shopify/cli": "^3.56.2",
     "@shopify/polaris-icons": "^8.0.0",
     "react-icons": "^4.12.0"
   },
