@@ -23,6 +23,8 @@ Route::get('/', function () {
 Route::get('orders',[\App\Http\Controllers\OrderController::class,'Orders']);
 Route::get('sync-orders',[\App\Http\Controllers\OrderController::class,'OrdersSync']);
 Route::get('balance-detail',[\App\Http\Controllers\OrderController::class,'BalanceDetail']);
+Route::get('order-detail',[\App\Http\Controllers\OrderController::class,'OrderDetail']);
+Route::post('push-order',[\App\Http\Controllers\OrderController::class,'PushOrder']);
 
 Route::get('setting',[\App\Http\Controllers\SettingController::class,'Setting']);
 Route::post('setting-save',[\App\Http\Controllers\SettingController::class,'SettingSave']);
@@ -45,9 +47,11 @@ Route::post('/webhooks/order-create', function (Request $request) {
         $shop=$request->header('x-shopify-shop-domain');
         $shop=\App\Models\Session::where('shop',$shop)->first();
         \App\Jobs\OrderWebhookJob::dispatch($order,$shop);
+
     } catch (\Exception $e) {
 
     }
+    return true;
 });
 
 

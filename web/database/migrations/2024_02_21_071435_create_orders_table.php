@@ -16,7 +16,7 @@ class CreateOrdersTable extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('shopify_id')->unsigned()->nullable();
-            $table->bigInteger('esim_order_id')->unsigned()->nullable();
+            $table->string('esim_order_id')->nullable();
             $table->longText('esim_all_profile')->nullable();
             $table->string('email')->nullable();
             $table->longText('order_number')->nullable();
@@ -50,6 +50,8 @@ class CreateOrdersTable extends Migration
             $table->bigInteger('shop_id')->unsigned()->nullable();
             $table->bigInteger('metafield_id')->unsigned()->nullable();
             $table->boolean('smtp_status')->default(0);
+            $table->boolean('error_true')->default(0);
+            $table->longText('error_message')->nullable();
             $table->timestamps();
         });
     }

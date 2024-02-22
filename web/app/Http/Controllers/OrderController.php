@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lineitem;
+use App\Models\Log;
 use App\Models\Order;
 use App\Models\PageBar;
 use App\Models\Session;
@@ -16,7 +17,28 @@ class OrderController extends Controller
     public function Orders(Request $request)
     {
         $shop = getShop($request->get('shopifySession'));
-        $orders = Order::where('shop_id', $shop->id)->orderBy('order_number','Desc')->paginate(20);
+        $orders = Order::query();
+        if($request->value) {
+            $orders = $orders->where('order_number', 'like', '%' . $request->value . '%');
+        }
+        if($request->status==0) {
+
+        }else if($request->status==1){
+            $orders = $orders->whereNull('fulfillment_status');
+        }else if($request->status==2){
+            $orders = $orders->where('fulfillment_status','partial');
+        }
+        else if($request->status==3){
+            $orders = $orders->where('fulfillment_status','fulfilled');
+        }
+        if($request->payment_status=='all') {
+
+        }else if($request->payment_status=='paid'){
+            $orders =$orders->where('financial_status','paid');
+        }else if($request->payment_status=='unpaid'){
+            $orders = $orders->where('financial_status','unpaid');
+        }
+        $orders=$orders->where('shop_id', $shop->id)->orderBy('id', 'Desc')->paginate(20);
         return response()->json($orders);
     }
     public function OrdersSync(Request $request){
@@ -31,6 +53,7 @@ class OrderController extends Controller
             'page_info' => $nextPage,
         ]);
         $orders = $result->getDecodedBody()['orders'];
+
         foreach ($orders as $order) {
             $this->createUpdateOrder($order, $session);
         }
@@ -47,7 +70,10 @@ class OrderController extends Controller
 
     public function createUpdateOrder($order, $shop)
     {
+
         $client = new Rest($shop->shop, $shop->access_token);
+
+
         $order = json_decode(json_encode($order), false);
         if($order->financial_status!='refunded' && $order->cancelled_at==null  ) {
 
@@ -162,6 +188,8 @@ class OrderController extends Controller
             $response = curl_exec($curl);
             $response=json_decode($response);
 
+
+
             if($response->success==true){
                 if(isset($response->obj)) {
                     $orderNo = $response->obj->orderNo;
@@ -238,7 +266,12 @@ class OrderController extends Controller
                 }
                 }
             }
-                }
+                }else{
+
+                $newOrder->error_true=1;
+                $newOrder->error_message=json_encode($response);
+                $newOrder->save();
+            }
             }
 
 
@@ -284,5 +317,174 @@ class OrderController extends Controller
             curl_close($curl1);
             return response()->json($response1);
         }
+
+
+    }
+
+    public function OrderDetail(Request $request){
+
+$order=Order::find($request->id);
+if($order){
+    if($order->error_true==1){
+        $json=$order->error_message;
+    }else{
+        $json=$order->esim_all_profile;
+    }
+
+    return response()->json(['data'=>$json]);
+}
+    }
+
+    public function PushOrder(Request $request)
+    {
+        $shop = getShop($request->get('shopifySession'));
+        $setting = Setting::where('shop_id', $shop->id)->first();
+        $client = new Rest($shop->shop, $shop->access_token);
+        $order = Order::find($request->id);
+        if ($setting && $setting->status == 1) {
+            if ($order){
+                $packageInfoList = array();
+                $line_items=Lineitem::where('order_id',$order->id)->get();
+                foreach ($line_items as $item) {
+
+                    $packageInfoList[] = array(
+                        'packageCode' => $item->sku,
+                        'count' => $item->quantity
+                    );
+                }
+                $transactionId = $order->order_number;
+            $request_body = array(
+                "transactionId" => $transactionId,
+                "packageInfoList" => $packageInfoList
+            );
+            $request_json = json_encode($request_body);
+
+            $curl = curl_init();
+
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => 'https://api.esimaccess.com/api/v1/open/esim/order',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $request_json,
+                CURLOPT_HTTPHEADER => array(
+                    'RT-AccessCode:' . $setting->access_code,
+                    'Content-Type: application/json'
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $response = json_decode($response);
+
+
+            if ($response->success == true) {
+                if (isset($response->obj)) {
+                    $orderNo = $response->obj->orderNo;
+                    $order->esim_order_id = $orderNo;
+                    $order->error_true=0;
+                    $order->error_message=null;
+                    $order->save();
+
+
+                    $order_update = $client->put('/orders/' . $order->shopify_id . '.json', [
+                        "order" => [
+                            "note" => $orderNo,
+                        ]
+                    ]);
+                    $order_update = $order_update->getDecodedBody();
+
+                    if (isset($order_update) && !isset($order_update['errors'])) {
+
+
+                        $curl1 = curl_init();
+
+                        $request_data = array(
+                            "orderNo" => $orderNo,
+                            "iccid" => "",
+                            "pager" => array(
+                                "pageNum" => 1,
+                                "pageSize" => 500
+                            )
+                        );
+                        $request_data = json_encode($request_data);
+
+                        curl_setopt_array($curl1, array(
+                            CURLOPT_URL => 'https://api.esimaccess.com/api/v1/open/esim/query',
+                            CURLOPT_RETURNTRANSFER => true,
+                            CURLOPT_ENCODING => '',
+                            CURLOPT_MAXREDIRS => 10,
+                            CURLOPT_TIMEOUT => 0,
+                            CURLOPT_FOLLOWLOCATION => true,
+                            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                            CURLOPT_CUSTOMREQUEST => 'POST',
+                            CURLOPT_POSTFIELDS => $request_data,
+                            CURLOPT_HTTPHEADER => array(
+                                'RT-AccessCode:' . $setting->access_code,
+                                'Content-Type: application/json'
+                            ),
+                        ));
+
+                        $response1 = curl_exec($curl1);
+                        curl_close($curl1);
+                        $response1 = json_decode($response1, true);
+                        if ($response1['success'] == true) {
+                            if ($response1 && isset($response1['obj']['esimList'])) {
+
+                                $esim_list = $response1['obj']['esimList'];
+                                $order->esim_all_profile = json_encode($esim_list);
+                                $order->save();
+
+
+                                $metafield_data = [
+                                    "metafield" =>
+                                        [
+                                            "key" => 'data',
+                                            "value" => json_encode($esim_list),
+                                            "type" => "json_string",
+                                            "namespace" => "Esim",
+
+                                        ]
+                                ];
+                                $order_metafield = $client->post('/orders/' . $order->shopify_id . '/metafields.json', $metafield_data);
+                                $order_metafield = $order_metafield->getDecodedBody();
+
+                                if (isset($order_metafield) && !isset($order_metafield['errors'])) {
+                                    $order->metafield_id = $order_metafield['metafield']['id'];
+                                    $order->save();
+                                }
+                            }
+                        }
+                    }
+                }
+                $data=[
+                    'success'=>true,
+                    'message'=>'Order Pushed Successfully'
+                ];
+            } else {
+
+                $order->error_true = 1;
+                $order->error_message = json_encode($response);
+                $order->save();
+                $error=json_decode($order->error_message);
+
+                $data=[
+                    'success'=>false,
+                    'message'=>$error->errorMsg
+                ];
+            }
+
+        }
+
+    }else{
+            $data=[
+                'success'=>false,
+                'message'=>'Please Enable App from Setting'
+            ];
+        }
+        return response()->json($data);
     }
 }

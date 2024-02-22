@@ -45,6 +45,10 @@ export default function App() {
                   label: "Settings",
                   destination: "/",
                 },
+                  {
+                      label: "Orders",
+                      destination: "/Orders",
+                  },
 
               ]}
             />

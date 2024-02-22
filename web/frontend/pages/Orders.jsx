@@ -7,10 +7,12 @@ import {
     LegacyCard,
     useIndexResourceState,
     Image,
+    Popover,
     Pagination,
     Link,
     EmptySearchResult,
     Toast,
+    ActionList,
     TextField,
     Frame,
     Tooltip,
@@ -40,25 +42,32 @@ import { useAppBridge, } from "@shopify/app-bridge-react";
 import { getSessionToken } from "@shopify/app-bridge-utils";
 import ReactSelect from 'react-select';
 
-import { ProductsCard } from "../components";
-import {useNavigate} from "react-router-dom";
+import JSONFormatter from 'json-formatter-js'
 
-export default function HomePage() {
+import { ProductsCard } from "../components";
+import {useNavigate,useLocation} from "react-router-dom";
+
+export default function Orders() {
     const  apiUrl  = 'https://phpstack-1216846-4323606.cloudwaysapps.com'
     const appBridge = useAppBridge();
     // const { user } = useAuthState();
     const navigate = useNavigate();
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const currentPage = parseInt(queryParams.get('page')) || 1;
+    const search_value = (queryParams.get('search')) || "";
     const [loading, setLoading] = useState(true);
     const [customersLoading, setCustomersLoading] = useState(false);
     const [selected, setSelected] = useState(0);
-    const [queryValue, setQueryValue] = useState("");
+    const [queryValue, setQueryValue] = useState(search_value);
     const [toggleLoadData, setToggleLoadData] = useState(true);
+    const [jsonData, setJsonData] = useState("");
     const [errorToast, setErrorToast] = useState(false);
     const [sucessToast, setSucessToast] = useState(false);
+
     const [toastMsg, setToastMsg] = useState("");
     const [storeUrl, setStoreUrl] = useState("");
     const [active, setActive] = useState(false);
-
     const [orders, setOrders] = useState([]);
 
     console.log('orders',orders)
@@ -139,61 +148,12 @@ export default function HomePage() {
     const handleOrderFilter =async (value) =>  {
         setSelected(value)
         setLoading(true)
+        const sessionToken = await getSessionToken(appBridge);
 
-
-        try {
-
-            const response = await axios.get(`${apiUrl}/order-filter?status=${value}&value=${queryValue}&seller=${selectedStatus.value}`,
-                {
-                    headers: {
-                        Authorization: "Bearer " + sessionToken
-                    }
-                })
-
-            setOrders(response?.data?.orders)
-            setLoading(false)
-            // setBtnLoading(false)
-            // setToastMsg(response?.data?.message)
-            // setSucessToast(true)
-
-
-        } catch (error) {
-
-            setToastMsg(error?.response?.data?.message)
-            setErrorToast(true)
-        }
     }
 
 
-    const fetchProducts =async (filter_type,selectedValue) =>  {
-        setShowClearButton(true);
 
-        // setSelected(value)
-        setLoading(true)
-
-
-        try {
-
-            const response = await axios.get(`${apiUrl}/order-filter-payment?value=${selectedValue.value}&order_value=${queryValue}&status=${selected}`,
-                {
-                    headers: {
-                        Authorization: "Bearer " + sessionToken
-                    }
-                })
-
-            setOrders(response?.data?.orders)
-            setLoading(false)
-            // setBtnLoading(false)
-            // setToastMsg(response?.data?.message)
-            // setSucessToast(true)
-
-
-        } catch (error) {
-            console.log(error)
-            setToastMsg(error?.response?.data?.message)
-            setErrorToast(true)
-        }
-    }
 
 
 
@@ -267,38 +227,21 @@ export default function HomePage() {
         setCustomersLoading(true)
         // setLoading(true)
         setQueryValue(value)
+        const sessionToken = await getSessionToken(appBridge);
 
-
-
-
-        try {
-            const response = await axios.get(`${apiUrl}/search-order?value=${value}&seller=${selectedStatus.value}&status=${selected}`,
-                {
-                    headers: {
-                        Authorization: "Bearer " + sessionToken
-                    }
-                })
-            // setLoading(false)
-            setOrders(response?.data?.data)
-            setCustomersLoading(false)
-
-
-        } catch (error) {
-            setBtnLoading(false)
-            setToastMsg(error?.response?.data?.message)
-            setErrorToast(true)
-        }
-
-        setTimeout(() => {
-            setToggleLoadData(true)
-        }, 1000);
     }
 
     const handlePagination = (value) => {
         console.log("value", value, nextPageCursor)
         if (value == "next") {
+            const nextPage = currentPage + 1;
+            queryParams.set('page', nextPage.toString());
+            navigate(`/Orders?${queryParams.toString()}`);
             setPageCursorValue(nextPageCursor);
         } else {
+            const prevPage = currentPage - 1;
+            queryParams.set('page', prevPage.toString());
+            navigate(`/Orders?${queryParams.toString()}`);
             setPageCursorValue(previousPageCursor);
         }
         setPageCursor(value);
@@ -333,19 +276,83 @@ export default function HomePage() {
         []
     );
 
-    const handleReassignAction = (id) => {
+    const handleReassignAction = async (id) => {
         setUniqueId(id);
-        setModalReassign(true);
+
+        try {
+            const sessionToken = await getSessionToken(appBridge);
+            const headers = {
+                Authorization: `Bearer ${sessionToken}`,
+            };
+            const response = await axios.get(
+                `${apiUrl}/api/order-detail?id=${id}`,{headers}
+            );
+            console.log('response',response)
+
+            const formatter = new JSONFormatter(response.data.data);
+            console.log('formatter',formatter)
+            setJsonData(formatter?.json)
+            setModalReassign(true);
+
+        } catch (error) {
+            console.log('errorr',error)
+            console.warn("get orders Api Error", error.response);
+            setLoading(false);
+            // setCustomersLoading(false)
+            setToastMsg("Server Error");
+            setToggleLoadData(false);
+            setErrorToast(true);
+
+        }
+
+
+
+    };
+
+    const handleSubmitAction = async (id) => {
+        setUniqueId(id);
+        setLoading(true)
+        try {
+            const sessionToken = await getSessionToken(appBridge);
+            const headers = {
+                Authorization: `Bearer ${sessionToken}`,
+            };
+            const response = await axios.post(
+                `${apiUrl}/api/push-order?id=${id}`,{headers}
+            );
+            console.log('response',response)
+            setToastMsg(response?.data?.message)
+            if(response?.data?.success==true) {
+                setSucessToast(true)
+
+            }else {
+                setToastMsg(response?.data?.message);
+                setErrorToast(true);
+            }
+            setLoading(false)
+
+        } catch (error) {
+            console.log('errorr',error)
+            console.warn("get orders Api Error", error.response);
+            setLoading(false);
+            // setCustomersLoading(false)
+            setToastMsg("Server Error");
+            setToggleLoadData(false);
+            setErrorToast(true);
+
+        }
+
+
+
     };
 
 
     const handleSelectChange = (selectedOption) => {
-
+        setLoading(true)
         const selectedValue =  selectedOption; // Access the value property of the selected option
         setSelectedStatus(selectedValue);
+        setShowClearButton(true);
 
-
-        fetchProducts( filterType, selectedValue); // Pass the query, filter type, and selected value as arguments
     };
     const [selectedBrand, setSelectedBrand] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
@@ -528,6 +535,7 @@ export default function HomePage() {
                 created_at,
                 financial_status,
                 fulfillment_status,
+                error_true
 
             },
             index
@@ -601,6 +609,38 @@ export default function HomePage() {
 
                     </IndexTable.Cell>
                 )}
+
+                <IndexTable.Cell>
+                    <Popover
+                        active={active[id]}
+                        activator={
+                            <Button onClick={() => toggleActive(id)} plain>
+                                <Icon source={HorizontalDotsMinor}></Icon>
+                            </Button>
+                        }
+                        autofocusTarget="first-node"
+                        onClose={() => setActive(false)}
+                    >
+                        <ActionList
+                            actionRole="menuitem"
+                            items={[
+                                ...(error_true === 1
+                                    ? [
+                                        {
+                                            content: "Push Order",
+                                            onAction: () => handleSubmitAction(id),
+                                        },
+                                    ]
+                                    : []),
+                                {
+                                    content: "View Order",
+                                    onAction: () => handleReassignAction(id),
+                                },
+                            ]}
+                        />
+
+                    </Popover>
+                </IndexTable.Cell>
 
 
             </IndexTable.Row>
@@ -754,10 +794,11 @@ console.log(apiUrl,'url')
                 Authorization: `Bearer ${sessionToken}`,
             };
             if (pageCursorValue != '') {
-
-                var url = pageCursorValue;
+                var payment_status = encodeURIComponent(selectedStatus.value);
+                var url = pageCursorValue+ '&value=' + queryValue +'&status=' +selected+'&payment_status=' +payment_status;
             } else {
-                var url = `${apiUrl}/api/orders?${pageCursor}=${pageCursorValue}`;
+                var payment_status = encodeURIComponent(selectedStatus.value);
+                var url = `${apiUrl}/api/orders?page=${currentPage}&${pageCursor}=${pageCursorValue}&value=${queryValue}&status=${selected}&payment_status=${payment_status}`;
             }
 
             const response = await axios.get(url,{headers});
@@ -792,11 +833,28 @@ console.log(apiUrl,'url')
 
     useEffect(() => {
         getData();
-    }, [toggleLoadData]);
+    }, [toggleLoadData,queryValue,selected,selectedStatus]);
 
     return (
         <Frame>
         <div className="Products-Page IndexTable-Page Orders-page">
+
+            <Modal
+                open={modalReassign}
+                onClose={handleReassignCloseAction}
+                title="Esim Order Status"
+                primaryAction={{
+                    content: "Cancel",
+                    onAction: handleReassignCloseAction,
+                }}
+
+            >
+                <Modal.Section>
+
+                    {/*{JSON.parse(jsonData)}*/}
+                    {jsonData}
+                </Modal.Section>
+            </Modal>
 
             {loading ? (
                 <span>
@@ -891,6 +949,7 @@ console.log(apiUrl,'url')
                                         { title: "Date" },
                                         { title: "Payment Status" },
                                         { title: "Order Status" },
+                                        { title: 'Action' },
 
                                     ]}
 
