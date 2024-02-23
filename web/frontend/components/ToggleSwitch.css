@@ -67,3 +67,23 @@
 .access_code{
     margin-top:10px;
 }
+
+.complete .Polaris-Badge{
+    background:#70ffa6;
+}
+
+.failed .Polaris-Badge{
+    background-color:#FAC9A8;
+}
+
+.view_order_btn{
+    margin-left:5px;
+}
+.btn_div{
+    display:flex;
+}
+
+.div_json{
+    overflow-y: auto;
+
+}

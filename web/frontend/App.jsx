@@ -41,14 +41,15 @@ export default function App() {
           <QueryProvider>
             <NavigationMenu
               navigationLinks={[
-                {
-                  label: "Settings",
-                  destination: "/",
-                },
                   {
                       label: "Orders",
-                      destination: "/Orders",
+                      destination: "/",
                   },
+                  {
+                  label: "Settings",
+                  destination: "/Settings",
+                },
+
 
               ]}
             />

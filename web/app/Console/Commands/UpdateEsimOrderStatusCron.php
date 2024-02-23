@@ -100,10 +100,10 @@ class UpdateEsimOrderStatusCron extends Command
                             $metafield_data = [
                                 "metafield" =>
                                     [
-                                        "key" => 'data',
+                                        "key" => 'esimaccess_details',
                                         "value" => json_encode($esim_list),
                                         "type" => "json_string",
-                                        "namespace" => "Esim",
+                                        "namespace" => "custom",
 
                                     ]
                             ];

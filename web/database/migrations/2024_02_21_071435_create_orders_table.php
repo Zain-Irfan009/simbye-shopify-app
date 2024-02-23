@@ -52,6 +52,7 @@ class CreateOrdersTable extends Migration
             $table->boolean('smtp_status')->default(0);
             $table->boolean('error_true')->default(0);
             $table->longText('error_message')->nullable();
+            $table->boolean('order_place')->default(0);
             $table->timestamps();
         });
     }
