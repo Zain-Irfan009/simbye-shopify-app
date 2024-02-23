@@ -103,7 +103,7 @@ class UpdateEsimOrderStatusCron extends Command
                                         "key" => 'esimaccess_details',
                                         "value" => json_encode($esim_list),
                                         "type" => "json_string",
-                                        "namespace" => "custom",
+                                        "namespace" => "Simbye",
 
                                     ]
                             ];

@@ -199,7 +199,7 @@ class OrderController extends Controller
                 if(isset($response->obj)) {
                     $orderNo = $response->obj->orderNo;
                     $newOrder->esim_order_id=$orderNo;
-                    $order->order_place=1;
+                    $newOrder->order_place=1;
                     $newOrder->save();
 
             $order_update = $client->put('/orders/' . $newOrder->shopify_id . '.json', [
@@ -260,7 +260,7 @@ class OrderController extends Controller
                                     "key" => 'esimaccess_details',
                                     "value" => json_encode($esim_list),
                                     "type" => "json_string",
-                                    "namespace" => "custom",
+                                    "namespace" => "Simbye",
 
                                 ]
                         ];
@@ -545,7 +545,7 @@ if($order){
                                             "key" => 'esimaccess_details',
                                             "value" => json_encode($esim_list),
                                             "type" => "json_string",
-                                            "namespace" => "custom",
+                                            "namespace" => "Simbye",
 
                                         ]
                                 ];

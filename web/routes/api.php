@@ -57,13 +57,13 @@ $string=' [{
                 "key" => 'esimaccess_details',
                 "value" => json_encode($new->esim_all_profile),
                 "type" => "json_string",
-                "namespace" => "custom",
+                "namespace" => "Simbye",
 
             ]
     ];
     $order_metafield = $client->post('/orders/' . $new->shopify_id . '/metafields.json', $metafield_data);
     $order_metafield = $order_metafield->getDecodedBody();
-
+dd($order_metafield);
     if (isset($order_metafield) && !isset($order_metafield['errors'])) {
         $new->metafield_id = $order_metafield['metafield']['id'];
         $new->save();
