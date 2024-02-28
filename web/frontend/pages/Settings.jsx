@@ -71,7 +71,8 @@ export default function Settings() {
     const [btnLoading, setBtnLoading] = useState(false)
     const [skeleton, setSkeleton] = useState(false)
 
-    const [status, setStatus] = useState(false)
+    const [status, setStatus] = useState(0)
+    const [emailServiceStatus, setEmailServiceStatus] = useState(0)
 
     const [emailOrderStatus, setEmailOrderStatus] = useState(false)
 
@@ -81,10 +82,7 @@ export default function Settings() {
 
     const [mailContentStatus, setMailContentStatus] = useState(false)
 
-    const [mailHeaderStatus, setMailHeaderStatus] = useState(false)
-    const [mailFooterStatus, setMailFooterStatus] = useState(false)
-    const [headerBackgroundColor, setHeaderBackgroundColor] = useState('#000000');
-    const [footerBackgroundColor, setFooterBackgroundColor] = useState('#000000');
+
 
     const [accessCode, setAccessCode] = useState('')
 
@@ -94,24 +92,9 @@ export default function Settings() {
     );
 
 
-    const handleHeaderBackgoundColor = useCallback((e)=>setHeaderBackgroundColor(e.target.value),[])
-    const handleFooterBackgoundColor = useCallback((e)=>setFooterBackgroundColor(e.target.value),[])
 
 
-    const tabs = [
-        {
-            id: "1",
-            content: "Product Email",
-        },
-        {
-            id: "2",
-            content: "Order Email",
-        },
-        // {
-        //     id: "3",
-        //     content: "Inducements",
-        // },
-    ];
+
 
 
 
@@ -157,8 +140,14 @@ export default function Settings() {
     );
 
     const handleSellerPageProfile = (e) => {
-        setStatus(!status)
+        setStatus(status === 0 ? 1 : 0)
     }
+
+
+        const handleEmailService = (e) => {
+            setEmailServiceStatus(emailServiceStatus === 0 ? 1 : 0);
+        }
+
 
     const handleEmailOrderStatus = (e) => {
         setEmailOrderStatus(!emailOrderStatus)
@@ -185,6 +174,7 @@ export default function Settings() {
 
             console.log(response)
             setStatus(response?.data?.data?.status)
+            setEmailServiceStatus(response?.data?.data?.email_service_status)
             setAccessCode(response?.data?.data?.access_code)
             setLoading(false)
 
@@ -206,6 +196,7 @@ export default function Settings() {
             let data = {
                 access_code: accessCode,
                 status: status,
+                email_service_status: emailServiceStatus,
 
             }
 
@@ -262,7 +253,7 @@ export default function Settings() {
                                                             id='toggle'
                                                             type="checkbox"
                                                             className="tgl tgl-light"
-                                                            checked={status}
+                                                            checked={status===1}
                                                             onChange={handleSellerPageProfile}
                                                         />
                                                         <label htmlFor='toggle' className='tgl-btn'></label>
@@ -279,6 +270,20 @@ export default function Settings() {
                                                                 value={accessCode}
                                                                 onChange={handleTitle}
                                                             />
+                                                        </div>
+                                                        <div className="access_code">
+                                                        <p>{`Enable/Disable Email Service`}</p>
+                                                    <span>
+                                                        <input
+                                                            id='toggle1'
+                                                            type="checkbox"
+                                                            className="tgl tgl-light"
+                                                            checked={emailServiceStatus === 1}
+                                                            onChange={handleEmailService}
+                                                        />
+                                                        <label htmlFor='toggle1' className='tgl-btn'></label>
+
+                                                    </span>
                                                         </div>
 
                                                     </Card>

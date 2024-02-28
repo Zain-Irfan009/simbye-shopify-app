@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\SendEmail;
 use App\Models\Lineitem;
 use App\Models\Log;
+use App\Models\MailSmtpSetting;
 use App\Models\Order;
 use App\Models\PageBar;
 use App\Models\Session;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Mail;
 use Shopify\Clients\Rest;
-
+use Swift_Mailer;
+use Swift_SmtpTransport;
 class OrderController extends Controller
 {
 
@@ -243,6 +248,10 @@ class OrderController extends Controller
                 $response1 = curl_exec($curl1);
                 curl_close($curl1);
                 $response1 = json_decode($response1, true);
+                $log=new Log();
+                $log->record=json_encode($response1);
+                $log->log='All Profile22';
+                $log->save();
                 if ($response1['success'] == true) {
                     if ($response1 && isset($response1['obj']['esimList'])) {
 
@@ -251,7 +260,7 @@ class OrderController extends Controller
                         $newOrder->save();
                         $log=new Log();
                         $log->record=json_encode($esim_list);
-                        $log->log='All Profile';
+                        $log->log='All Profile33';
                         $log->save();
 
                         $metafield_data = [
@@ -271,6 +280,8 @@ class OrderController extends Controller
                         if (isset($order_metafield) && !isset($order_metafield['errors'])) {
                             $newOrder->metafield_id = $order_metafield['metafield']['id'];
                             $newOrder->save();
+
+                            $this->OrderMail($newOrder);
                         }
                     }
                 }
@@ -587,4 +598,36 @@ if($order){
         }
         return response()->json($data);
     }
+
+
+    public function OrderMail($order){
+        $user =Session::first();
+
+        $order=Order::find($order->id);
+
+        $mail_smtp=MailSmtpSetting::where('shop_id',$user->id)->first();
+        $setting=Setting::where('shop_id',$user->id)->first();
+
+        if($setting->email_service_status==1 && $mail_smtp) {
+
+            Config::set('mail.mailers.smtp.host',isset($mail_smtp->smtp_host)?($mail_smtp->smtp_host):'smtp.mailgun.org');
+            Config::set('mail.mailers.smtp.port',isset($mail_smtp->smtp_port	)?($mail_smtp->smtp_port):587);
+            Config::set('mail.mailers.smtp.username',isset($mail_smtp->smtp_username)?($mail_smtp->smtp_username):null);
+            Config::set('mail.mailers.smtp.password',isset($mail_smtp->smtp_password)?($mail_smtp->smtp_password):null);
+            Config::set('mail.from.address',isset($mail_smtp->email_from)?($mail_smtp->email_from):'info@tetralogicx.com');
+            Config::set('mail.from.name',isset($mail_smtp->from_name)?($mail_smtp->from_name):'Example');
+
+
+            $details['to'] = $user->email;
+            $details['name'] = $order->first_name.' '.$order->last_name;
+            $details['subject'] = 'Order Detail';
+            $details['esim_all_profile'] = $order->esim_all_profile;
+            if($order->email) {
+                Mail::to($order->email)->send(new SendEmail($details));
+            }
+
+        }
+    }
+
+
 }

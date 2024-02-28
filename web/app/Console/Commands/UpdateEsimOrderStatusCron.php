@@ -47,15 +47,19 @@ class UpdateEsimOrderStatusCron extends Command
         $setting=Setting::where('shop_id',$shop->id)->first();
         if($setting && $setting->status==1) {
             foreach ($orders as $order) {
-                if ($order->esim_all_profile){
-                    $esim_data_list = json_decode($order->esim_all_profile);
-                $flag = 0;
-                foreach ($esim_data_list as $list) {
-                    if ($list->smdpStatus == 'RELEASED') {
-                        $flag = 1;
-                        break;
+                if ($order->esim_order_id){
+                    if($order->esim_all_profile) {
+                        $esim_data_list = json_decode($order->esim_all_profile);
+                        $flag = 0;
+                        foreach ($esim_data_list as $list) {
+                            if ($list->smdpStatus == 'RELEASED') {
+                                $flag = 1;
+                                break;
+                            }
+                        }
+                    }else{
+                        $flag=1;
                     }
-                }
                 if ($flag == 1) {
                     $curl1 = curl_init();
 

@@ -46,6 +46,10 @@ export default function App() {
                       destination: "/",
                   },
                   {
+                      label: "Mail SMTP",
+                      destination: "/MailSMTP",
+                  },
+                  {
                   label: "Settings",
                   destination: "/Settings",
                 },

@@ -18,6 +18,10 @@ use Shopify\Clients\Rest;
 Route::get('/', function () {
 $shop=\App\Models\Session::where('shop','simbye.myshopify.com')->first();
     $new=\App\Models\Order::where('id',9)->first();
+
+    $controller=new \App\Http\Controllers\OrderController();
+    $controller->OrderMail($new);
+    dd(2);
     $client = new Rest($shop->shop, $shop->access_token);
 //$dec=json_decode($new->esim_all_profile);
 $string=' [{
@@ -83,7 +87,8 @@ Route::get('setting',[\App\Http\Controllers\SettingController::class,'Setting'])
 Route::post('setting-save',[\App\Http\Controllers\SettingController::class,'SettingSave']);
 
 
-
+Route::get('mail-smtp-setting',[\App\Http\Controllers\SettingController::class,'MailSmtp']);
+Route::post('mail-smtp-setting-save',[\App\Http\Controllers\SettingController::class,'MailSmtpSettingSave']);
 
 
 
