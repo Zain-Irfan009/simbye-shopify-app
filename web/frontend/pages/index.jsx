@@ -236,12 +236,12 @@ export default function HomePage() {
         if (value == "next") {
             const nextPage = currentPage + 1;
             queryParams.set('page', nextPage.toString());
-            navigate(`/Orders?${queryParams.toString()}`);
+            navigate(`/?${queryParams.toString()}`);
             setPageCursorValue(nextPageCursor);
         } else {
             const prevPage = currentPage - 1;
             queryParams.set('page', prevPage.toString());
-            navigate(`/Orders?${queryParams.toString()}`);
+            navigate(`/?${queryParams.toString()}`);
             setPageCursorValue(previousPageCursor);
         }
         setPageCursor(value);
