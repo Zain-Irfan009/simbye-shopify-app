@@ -610,12 +610,12 @@ if($order){
 
         if($setting->email_service_status==1 && $mail_smtp) {
 
-            Config::set('mail.mailers.smtp.host',isset($mail_smtp->smtp_host)?($mail_smtp->smtp_host):'smtp.mailgun.org');
+            Config::set('mail.mailers.smtp.host',isset($mail_smtp->smtp_host)?($mail_smtp->smtp_host):'smtp.sendgrid.net');
             Config::set('mail.mailers.smtp.port',isset($mail_smtp->smtp_port	)?($mail_smtp->smtp_port):587);
-            Config::set('mail.mailers.smtp.username',isset($mail_smtp->smtp_username)?($mail_smtp->smtp_username):null);
-            Config::set('mail.mailers.smtp.password',isset($mail_smtp->smtp_password)?($mail_smtp->smtp_password):null);
-            Config::set('mail.from.address',isset($mail_smtp->email_from)?($mail_smtp->email_from):'info@tetralogicx.com');
-            Config::set('mail.from.name',isset($mail_smtp->from_name)?($mail_smtp->from_name):'Example');
+            Config::set('mail.mailers.smtp.username',isset($mail_smtp->smtp_username)?($mail_smtp->smtp_username):'apikey');
+            Config::set('mail.mailers.smtp.password',isset($mail_smtp->smtp_password)?($mail_smtp->smtp_password):'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');
+            Config::set('mail.from.address',isset($mail_smtp->email_from)?($mail_smtp->email_from):'asad.ali@tetralogicx.com');
+            Config::set('mail.from.name',isset($mail_smtp->from_name)?($mail_smtp->from_name):'Simbye');
 
 
             $details['to'] = $user->email;
