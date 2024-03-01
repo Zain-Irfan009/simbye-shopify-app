@@ -425,8 +425,15 @@ class OrderController extends Controller
 
             $response1 = curl_exec($curl1);
             $response1=json_decode($response1);
+
+            $response = [
+                "success" => $response1->success,
+                "errorCode" => $response1->errorCode,
+                "errorMsg" => $response1->errorMsg,
+                "esimList" => $response1->obj->esimList
+            ];
             curl_close($curl1);
-            return response()->json($response1);
+            return response()->json($response);
         }
 
 
