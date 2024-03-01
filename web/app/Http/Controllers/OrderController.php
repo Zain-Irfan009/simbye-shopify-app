@@ -391,7 +391,7 @@ class OrderController extends Controller
 
     public function BalanceDetail(Request $request){
 
-        $order=Order::where('shopify_id',$request->id)->first();
+        $order=Order::where('esim_order_id',$request->order_no)->first();
         if($order) {
             $setting=Setting::where('shop_id',$order->shop_id)->first();
             $curl1 = curl_init();
@@ -399,7 +399,7 @@ class OrderController extends Controller
 
             $request_data = array(
                 "orderNo" => $order->esim_order_id,
-                "iccid" => "",
+                "iccid" => $request->iccid,
                 "pager" => array(
                     "pageNum" => 1,
                     "pageSize" => 500
