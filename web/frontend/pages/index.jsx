@@ -311,6 +311,49 @@ export default function HomePage() {
 
     };
 
+
+    const handleSendEmail = async (id) => {
+        setUniqueId(id);
+
+        setLoading(true)
+
+        try {
+            const sessionToken = await getSessionToken(appBridge);
+            const headers = {
+                Authorization: `Bearer ${sessionToken}`,
+            };
+            const response = await axios.get(
+                `${apiUrl}/api/send-email?id=${id}`,{headers}
+            );
+            getData()
+
+            setToastMsg(response?.data?.message)
+            if(response?.data?.success==true) {
+                setSucessToast(true)
+
+            }else {
+                setToastMsg(response?.data?.message);
+                setErrorToast(true);
+            }
+
+            setLoading(false)
+
+
+        } catch (error) {
+            console.log('errorr',error)
+            console.warn("get orders Api Error", error.response);
+            setLoading(false);
+            // setCustomersLoading(false)
+            setToastMsg("Server Error");
+            setToggleLoadData(false);
+            setErrorToast(true);
+
+        }
+
+
+
+    };
+
     const handleSubmitAction = async (id) => {
         setUniqueId(id);
         setLoading(true)
@@ -539,6 +582,7 @@ export default function HomePage() {
                 fulfillment_status,
                 error_true,
                 order_place,
+                is_email_failed
 
 
             },
@@ -576,6 +620,21 @@ export default function HomePage() {
                     )
                 )}
 
+                {is_email_failed === 1 ? (
+                    <IndexTable.Cell className="failed">
+                        <Badge progress='complete'>Failed</Badge>
+                    </IndexTable.Cell>
+                ) : (
+                    is_email_failed === 0  ? (
+                        <IndexTable.Cell className="complete">
+                            <Badge progress='complete'>Success</Badge>
+                        </IndexTable.Cell>
+                    ) :(
+                        <IndexTable.Cell></IndexTable.Cell>
+                    )
+                )}
+
+
 
                 <IndexTable.Cell>
 
@@ -590,6 +649,13 @@ export default function HomePage() {
                            View Order
                         </Button>
                         </div>
+                            <div className="view_order_btn">
+                            {is_email_failed === 1 && (
+                                <Button size="micro" onClick={() => handleSendEmail(id)}>
+                                    Send Email
+                                </Button>
+                            )}
+                            </div>
 
                     </div>
                 </IndexTable.Cell>
@@ -872,6 +938,7 @@ export default function HomePage() {
                                         { title: "Store Order Num" },
                                         { title: "Date" },
                                         { title: "Esim Access Status" },
+                                        { title: "Email Status" },
                                         { title: 'Action' },
 
                                     ]}

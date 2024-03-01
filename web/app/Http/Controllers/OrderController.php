@@ -631,10 +631,97 @@ if($order){
             $details['subject'] = 'Order Detail';
             $details['esim_all_profile'] = $order->esim_all_profile;
             if($order->email) {
-                Mail::to($order->email)->send(new SendEmail($details));
+                try {
+                    Mail::to($order->email)->send(new SendEmail($details));
+                    $order->is_email_failed=0;
+                    $order->email_error=null;
+                    $order->save();
+                }catch (\Exception $exception){
+                    $order->is_email_failed=1;
+                    $order->email_error=json_encode($exception->getMessage());
+                    $order->save();
+                    throw $exception;
+                }
+
             }
 
         }
+    }
+
+
+    public function SendEmail(Request $request){
+        $shop = getShop($request->get('shopifySession'));
+        $order = Order::find($request->id);
+        if($order) {
+            try {
+                $this->OrderMail($order);
+
+                $data=[
+                    'success'=>true,
+                    'message'=>'Mail Send Successfully'
+                ];
+            }catch (\Exception $exception){
+                $data=[
+                    'success'=>false,
+                    'message'=>$exception->getMessage()
+                ];
+            }
+            return response()->json($data);
+        }
+    }
+
+
+    public function PackagesList(Request $request){
+
+        $session=Session::first();
+        $setting=Setting::where('shop_id',$session->id)->first();
+        if($setting){
+            $curl = curl_init();
+            $location_code='';
+            if($request->input('locationCode')){
+                $location_code=$request->input('locationCode');
+            }
+            $slug='';
+            if($request->input('slug')){
+                $slug=$request->input('slug');
+            }
+
+            $request_data = array(
+                "locationCode" => $location_code,
+                "type" => '',
+                "packageCode" => '',
+                "slug" => $slug,
+            );
+            $request_data = json_encode($request_data);
+
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => 'https://api.esimaccess.com/api/v1/open/package/list',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $request_data,
+                CURLOPT_HTTPHEADER => array(
+                    'RT-AccessCode:'.$setting->access_code,
+                    'Content-Type: application/json'
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $response=json_decode($response);
+
+
+            $data = [
+                "success" => $response->success,
+                "packageList" => $response->obj->packageList
+            ];
+            curl_close($curl);
+            return response()->json($data);
+        }
+
     }
 
 
