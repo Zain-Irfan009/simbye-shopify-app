@@ -424,6 +424,7 @@ class OrderController extends Controller
             ));
 
             $response1 = curl_exec($curl1);
+            $response1=json_decode($response1);
             curl_close($curl1);
             return response()->json($response1);
         }
