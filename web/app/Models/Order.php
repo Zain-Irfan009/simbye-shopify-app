@@ -8,4 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     use HasFactory;
+
+    public function has_items(){
+        return  $this->hasMany(Lineitem::class, 'shopify_order_id', 'shopify_id');
+    }
 }

@@ -713,11 +713,15 @@ if($order){
             $response = curl_exec($curl);
             $response=json_decode($response);
 
+            if($response->success==true){
+                $data = [
+                    "success" => $response->success,
+                    "packageList" => $response->obj->packageList
+                ];
+            }else{
+                return response()->json($response);
+            }
 
-            $data = [
-                "success" => $response->success,
-                "packageList" => $response->obj->packageList
-            ];
             curl_close($curl);
             return response()->json($data);
         }

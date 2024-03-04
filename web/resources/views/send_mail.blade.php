@@ -12,9 +12,18 @@
 
 @php
     $esim_all_profile = json_decode($details['esim_all_profile']);
+
 @endphp
 
-@foreach($esim_all_profile as $profile)
+@foreach($esim_all_profile as $index=> $profile)
+
+    @php
+        // Format the expiration time
+        $packageName=$profile->packageList[0]->packageName;
+    @endphp
+
+        <b>{{$packageName}}</b>
+
     <img src="{{ $profile->qrCodeUrl }}" alt="QR Code" style="display: block; margin: 20px auto;">
     <p>You can also install the QR code manually from this shareable link:</p>
     <p><a href="{{ $profile->shortUrl }}">{{ $profile->shortUrl }}</a></p>
